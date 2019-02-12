@@ -1,0 +1,12 @@
+apply plugin: 'java'
+sourceSets {
+    main.java.srcDirs = ['src/com/chip8/emulator']
+}
+
+jar {
+    baseName = 'chip8'
+    version = '0.1.0'
+}
+apply plugin: 'application'
+
+mainClassName = 'com.chip8.emulator.Main'

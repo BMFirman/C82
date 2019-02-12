@@ -11,7 +11,7 @@ public class Main extends JFrame {
     static int i;
     static int opcode;
     static int[] memory;
-    static int[] generalPurposeRegisters;
+    static int[] gprs;
     static int[] stack;
     static int stackPointer;
     static int delayTimer;
@@ -202,7 +202,7 @@ public class Main extends JFrame {
         i = 0;
 
         memory = new int[4096];
-        generalPurposeRegisters = new int[16];
+        gprs = new int[16];
         displayGrid = new boolean[32][64];
         keyboardState = new boolean[16];
         stack = new int[16];
@@ -221,8 +221,9 @@ public class Main extends JFrame {
     private static void decoder() {
         // String hex = Integer.toHexString(opcode);
         // System.out.println(pc + " " + hex);
-
-        if ((opcode & 0xFFFF) == 0x00E0) {
+        if ((opcode & 0xF000)) {
+            Instructions.i0nnn();
+        } else if ((opcode & 0xFFFF) == 0x00E0) {
             Instructions.i00E0();
         } else if ((opcode & 0xFFFF) == 0x00EE) {
             Instructions.i00EE();

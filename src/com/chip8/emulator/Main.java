@@ -32,29 +32,50 @@ public class Main extends JFrame {
     private BufferedImage backBuffer;
     private Insets insets;
 
+    /**
+     * Initialize default values for the emulator.
+     * Preferences for window size, cps, and most changable default
+     * values are editable in the Main class constructor
+     */
     private Main() {
         fps = 180;
         scale = 8;
         windowWidth = 64 * scale;
         windowHeight = 32 * scale;
+        pc = 0x200;
+        i = 0;
+        memory = new int[4096];
+        gprs = new int[16];
+        displayGrid = new boolean[32][64];
+        keyboardState = new boolean[16];
+        stack = new int[16];
+        stackPointer = 0;
+        delayTimer = 0;
+        soundTimer = 0;
+        opcode = 0;
+        keyPressFlag = false;
+        filename = "INVADERS";
         // filename = args[0];
     }
 
+
     public static void main(String[] args) {
-        initializeEmulator();
         Main m = new Main();
+        initializeHexSprites();
+        loadProgram();
         m.run();
         System.exit(0);
     }
-
+    
     private void run() {
 
         initializeJFrame();
+
         boolean isRunning = true;
 
         while (isRunning) {
             long time = System.currentTimeMillis();
-            // Clear the keyboard state before begining cycle
+            // Clear the keyboard state before beginning cycle
             keyboardStateUpdater(0, false);
             update();
             draw();
@@ -81,6 +102,11 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Initialize the JFrame, insets are used to ensure the size of the frame
+     * does not interfere with the OS window. This preserves a scale * (64,32)
+     * display to be used by the emulator.
+     */
     private void initializeJFrame() {
         setTitle("Chip8");
         setSize(windowWidth, windowHeight);
@@ -95,6 +121,12 @@ public class Main extends JFrame {
         input = new InputHandler(this);
     }
 
+    /**
+     * Once a cycle draw the display onto the screen.
+     * a backBuffer is used to provide double buffering.
+     * This is not yet optimal as the displays refresh rate is tied to cps.
+     * TODO draw according to a frame rate and execute at a defined rate.
+     */
     private void draw() {
         Graphics g = getGraphics();
         Graphics bbg = backBuffer.getGraphics();
@@ -116,6 +148,11 @@ public class Main extends JFrame {
         g.drawImage(backBuffer, insets.left, insets.top, this);
     }
 
+    /**
+     * This method that runs once a cycle checks for keys that
+     * are in the down position and runs the keyboardStateUpdater
+     * method to update keyboardState[]
+     */
     private void update() {
         if (Main.input.isKeyDown(KeyEvent.VK_S)) {
             keyboardStateUpdater(0, true);
@@ -152,6 +189,11 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Used at the start of every cycle with the False
+     * flag to clear the keyboard, Used in conjunction with update()
+     * once a cycle to detect keys that have been pressed.
+     */
     private void keyboardStateUpdater(int i, boolean toggle) {
         if (toggle == true) {
             keyboardState[i] = true;
@@ -162,6 +204,11 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Determine the opcode from two memory addresses,
+     * run the decoder using the resolved opcode, increment the pc,
+     * lastly timers are incremented when they are greater than 0
+     */
     private static void emulateCycle(boolean performCycle) {
         if (performCycle) {
             opcode = ((memory[pc] << 8) & 0xFF00) + ((memory[pc + 1]) & 0xFF);
@@ -171,6 +218,12 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Load the program from a specified file
+     * using a DataInputStream that takes in a FileInputStream
+     * then the resultant byte[] generated from the file is copied into
+     * memory starting at 0x200
+     */
     private static void loadProgram() {
         String workingDirectory = System.getProperty("user.dir");
         System.out.println("Gradles user.dir is: " + workingDirectory);
@@ -195,6 +248,10 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * After each cycle times are decremented by 1 if they
+     * are greater than 0
+     */
     private static void decrementTimers() {
         if (delayTimer > 0) {
             delayTimer--;
@@ -204,31 +261,15 @@ public class Main extends JFrame {
         }
     }
 
-    private static void initializeEmulator() {
-        pc = 0x200;
-        i = 0;
-
-        memory = new int[4096];
-        gprs = new int[16];
-        displayGrid = new boolean[32][64];
-        keyboardState = new boolean[16];
-        stack = new int[16];
-        stackPointer = 0;
-        delayTimer = 0;
-        soundTimer = 0;
-        opcode = 0;
-        keyPressFlag = false;
-
-        filename = "INVADERS";
-
-        initializeHexSprites();
-        loadProgram();
-    }
-
+    /**
+     * Using bit-masking of the opcode the decoder runs the
+     * appropriate method according to the given opcode
+     */
     private static void decoder() {
-        String hexOpcode = Integer.toHexString(pc);
-        String hex = Integer.toHexString(opcode);
-        System.out.println(hexOpcode + " " + hex);
+        // String hexOpcode = Integer.toHexString(pc);
+        // String hex = Integer.toHexString(opcode);
+        // System.out.println(hexOpcode + " " + hex);
+
         if ((opcode & 0xF000) == 0x0000) {
             if ((opcode & 0xFFFF) == 0x00E0) {
                 Instructions.i00E0();
@@ -272,6 +313,10 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Simplification method used to determine which 0x8000
+     * Instruction to use
+     */
     private static void decoder8(int lsBits) {
         if (lsBits == 0) {
             Instructions.i8xy0();
@@ -294,6 +339,10 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Simplification method used to determine which 0xF000
+     * Instruction to use
+     */
     private static void decoderF(int lsByte) {
         if (lsByte == 0x07) {
             Instructions.iFx07();
@@ -316,6 +365,10 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * The built in character sprites are placed in the first
+     * 80 locations in memory, accessed with index * 5.
+     */
     private static void initializeHexSprites() {
         char[] fontSet = {
                 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -333,7 +386,7 @@ public class Main extends JFrame {
                 0xF0, 0x80, 0x80, 0x80, 0xF0, // C
                 0xE0, 0x90, 0x90, 0x90, 0xE0, // D
                 0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-                0xF0, 0x80, 0xF0, 0x80, 0x80 // F
+                0xF0, 0x80, 0xF0, 0x80, 0x80  // F
         };
 
         for (int i = 0; i < 80; i++) {

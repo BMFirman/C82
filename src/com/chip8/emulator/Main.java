@@ -4,9 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.awt.event.KeyEvent;
 
 public class Main extends JFrame {
-    
+
     static int pc;
     static int i;
     static int opcode;
@@ -16,11 +17,13 @@ public class Main extends JFrame {
     static int stackPointer;
     static int delayTimer;
     static int soundTimer;
+    static String filename;
+    static InputHandler input;
+    static boolean keyPressFlag;
 
     static boolean[][] displayGrid;
     static boolean[] keyboardState;
 
-    private final String filename;
     private final int fps;
     private final int scale;
     private final int windowWidth;
@@ -28,18 +31,17 @@ public class Main extends JFrame {
 
     private BufferedImage backBuffer;
     private Insets insets;
-    static InputHandler input;
 
     private Main() {
-        fps = 60;
+        fps = 180;
         scale = 8;
         windowWidth = 64 * scale;
         windowHeight = 32 * scale;
-        filename = args[0];
+        // filename = args[0];
     }
 
     public static void main(String[] args) {
-        intializeEmulator();
+        initializeEmulator();
         Main m = new Main();
         m.run();
         System.exit(0);
@@ -61,7 +63,11 @@ public class Main extends JFrame {
                 emulateCycle(false);
                 isRunning = false;
             } else {
+                String before = Integer.toHexString(gprs[0]);
+                // System.out.println("Before V0: " + before);
                 emulateCycle(true);
+                String after = Integer.toHexString(gprs[0]);
+                // System.out.println("After V0: " + after);
             }
 
             time = (1000 / fps) - (System.currentTimeMillis() - time);
@@ -95,6 +101,7 @@ public class Main extends JFrame {
 
         bbg.setColor(Color.BLACK);
         bbg.fillRect(0, 0, windowWidth, windowHeight);
+        bbg.drawRect(0, 0, scale, scale);
 
         for (int row = 0; row < windowHeight; row++) {
             for (int col = 0; col < windowWidth; col++) {
@@ -103,7 +110,7 @@ public class Main extends JFrame {
                 } else {
                     bbg.setColor(Color.BLACK);
                 }
-                bbg.drawRect(col-scale, row, scale, scale);
+                bbg.drawRect(col, row, scale, scale);
             }
         }
         g.drawImage(backBuffer, insets.left, insets.top, this);
@@ -167,7 +174,7 @@ public class Main extends JFrame {
     private static void loadProgram() {
         String workingDirectory = System.getProperty("user.dir");
         System.out.println("Gradles user.dir is: " + workingDirectory);
-        String pathname = workingDirectory + "/src/com/firman/" + filename;
+        String pathname = workingDirectory + "/src/com/chip8/emulator/" + filename;
         File file = new File(pathname);
         byte[] fileData = new byte[(int) file.length()];
         DataInputStream dis = null;
@@ -219,14 +226,17 @@ public class Main extends JFrame {
     }
 
     private static void decoder() {
-        // String hex = Integer.toHexString(opcode);
-        // System.out.println(pc + " " + hex);
-        if ((opcode & 0xF000)) {
-            Instructions.i0nnn();
-        } else if ((opcode & 0xFFFF) == 0x00E0) {
-            Instructions.i00E0();
-        } else if ((opcode & 0xFFFF) == 0x00EE) {
-            Instructions.i00EE();
+        String hexOpcode = Integer.toHexString(pc);
+        String hex = Integer.toHexString(opcode);
+        System.out.println(hexOpcode + " " + hex);
+        if ((opcode & 0xF000) == 0x0000) {
+            if ((opcode & 0xFFFF) == 0x00E0) {
+                Instructions.i00E0();
+            } else if ((opcode & 0xFFFF) == 0x00EE) {
+                Instructions.i00EE();
+            } else {
+                Instructions.i0nnn();
+            }
         } else if ((opcode & 0xF000) == 0x1000) {
             Instructions.i1nnn();
         } else if ((opcode & 0xF000) == 0x2000) {
@@ -236,11 +246,11 @@ public class Main extends JFrame {
         } else if ((opcode & 0xF000) == 0x4000) {
             Instructions.i4xkk();
         } else if ((opcode & 0xF000) == 0x5000) {
-            Instructions.i5xy0(Vx, Vy);
+            Instructions.i5xy0();
         } else if ((opcode & 0xF000) == 0x6000) {
-            Instructions.i6xkk(Vx, kk);
+            Instructions.i6xkk();
         } else if ((opcode & 0xF000) == 0x7000) {
-            Instructions.i7xkk(Vx, kk);
+            Instructions.i7xkk();
         } else if ((opcode & 0xF000) == 0x8000) {
             decoder8(opcode & 0x000F);
         } else if ((opcode & 0xF00F) == 0x9000) {
@@ -248,15 +258,15 @@ public class Main extends JFrame {
         } else if ((opcode & 0xF000) == 0xA000) {
             Instructions.iAnnn();
         } else if ((opcode & 0xF000) == 0xB000) {
-            Instructions.iBnnn(nnn);
+            Instructions.iBnnn();
         } else if ((opcode & 0xF000) == 0xC000) {
-            Instructions.iCxkk(Vx, kk);
+            Instructions.iCxkk();
         } else if ((opcode & 0xF000) == 0xD000) {
-            Instructions.iDxyn(Vx, Vy, n);
+            Instructions.iDxyn();
         } else if ((opcode & 0xF0FF) == 0xE09E) {
-            Instructions.iEx9E(Vx);
+            Instructions.iEx9E();
         } else if ((opcode & 0xF0FF) == 0xE0A1) {
-            Instructions.iExA1(Vx);
+            Instructions.iExA1();
         } else if ((opcode & 0xF000) == 0xF000) {
             decoderF(opcode & 0x00FF);
         }
@@ -264,45 +274,45 @@ public class Main extends JFrame {
 
     private static void decoder8(int lsBits) {
         if (lsBits == 0) {
-            Instructions.i8xy0(Vx, Vy);
+            Instructions.i8xy0();
         } else if (lsBits == 1) {
-            Instructions.i8xy1(Vx, Vy);
+            Instructions.i8xy1();
         } else if (lsBits == 2) {
-            Instructions.i8xy2(Vx, Vy);
+            Instructions.i8xy2();
         } else if (lsBits == 3) {
-            Instructions.i8xy3(Vx, Vy);
+            Instructions.i8xy3();
         } else if (lsBits == 4) {
-            Instructions.i8xy4(Vx, Vy);
+            Instructions.i8xy4();
         } else if (lsBits == 5) {
-            Instructions.i8xy5(Vx, Vy);
+            Instructions.i8xy5();
         } else if (lsBits == 6) {
-            Instructions.i8xy6(Vx);
+            Instructions.i8xy6();
         } else if (lsBits == 7) {
-            Instructions.i8xy7(Vx, Vy);
+            Instructions.i8xy7();
         } else if (lsBits == 0xE) {
-            Instructions.i8xyE(Vx);
+            Instructions.i8xyE();
         }
     }
 
     private static void decoderF(int lsByte) {
         if (lsByte == 0x07) {
-            Instructions.iFx07(Vx);
+            Instructions.iFx07();
         } else if (lsByte == 0x0A) {
-            Instructions.iFx0A(Vx);
+            Instructions.iFx0A();
         } else if (lsByte == 0x15) {
-            Instructions.iFx15(Vx);
+            Instructions.iFx15();
         } else if (lsByte == 0x18) {
-            Instructions.iFx18(Vx);
+            Instructions.iFx18();
         } else if (lsByte == 0x1E) {
-            Instructions.iFx1E(Vx);
+            Instructions.iFx1E();
         } else if (lsByte == 0x29) {
-            Instructions.iFx29(Vx);
+            Instructions.iFx29();
         } else if (lsByte == 0x33) {
-            Instructions.iFx33(Vx);
+            Instructions.iFx33();
         } else if (lsByte == 0x55) {
-            Instructions.iFx55(Vx);
+            Instructions.iFx55();
         } else if (lsByte == 0x65) {
-            Instructions.iFx65(Vx);
+            Instructions.iFx65();
         }
     }
 

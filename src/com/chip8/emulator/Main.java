@@ -54,7 +54,7 @@ public class Main extends JFrame {
         soundTimer = 0;
         opcode = 0;
         keyPressFlag = false;
-        filename = "INVADERS";
+        filename = "PONG2";
         // filename = args[0];
     }
 

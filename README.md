@@ -1,5 +1,7 @@
 # C8
 
+<img src="C8.png" width = 450px>
+
 ## The What?
 
 This project is an implementation of Chip8 written in Java. This project was started as an entry point into understanding the fundamentals of emulation.

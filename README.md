@@ -51,5 +51,3 @@ In its current iteration command line flags must be manually edited in source.
 | `D`        | `X`          |
 | `E`        | `C`          |
 | `F`        | `V`          |
-
-<img src="C8.png" width = 450px>
